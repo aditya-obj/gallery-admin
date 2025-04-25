@@ -1,30 +1,71 @@
+'use client';
+import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 
 export default function ProductCard({ product }) {
+  const router = useRouter();
+
+  const handleEdit = () => {
+    localStorage.setItem('editProduct', JSON.stringify(product));
+    router.push('/admin');
+  };
+
+  const handleDelete = async () => {
+    if (window.confirm('Are you sure you want to delete this product?')) {
+      try {
+        const response = await fetch(`/api/products/${product.id}`, {
+          method: 'DELETE',
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to delete product');
+        }
+        window.location.reload();
+      } catch (error) {
+        console.error('Error deleting product:', error);
+        alert('Failed to delete product. Please try again.');
+      }
+    }
+  };
+
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-      <div className="relative h-48 w-full">
+    <div className="bg-gray-900 rounded-xl overflow-hidden">
+      <div className="relative h-64 w-full">
         <Image
-          src={product.image || '/placeholder.png'}
+          src={product.image}
           alt={product.name}
           fill
           className="object-cover"
         />
       </div>
-      <div className="p-4">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm text-gray-500 dark:text-gray-400">ID: {product.id}</span>
-          <span className="text-sm bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded">
+      <div className="p-6">
+        {/* Admin Buttons above title */}
+        <div className="flex justify-end gap-2 mb-4">
+          <button 
+            onClick={handleEdit}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm"
+          >
+            Edit
+          </button>
+          <button 
+            onClick={handleDelete}
+            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm"
+          >
+            Delete
+          </button>
+        </div>
+
+        <div className="flex justify-between items-start mb-2">
+          <h2 className="text-2xl font-bold text-white">{product.name}</h2>
+          <span className="px-4 py-1 bg-blue-700 text-white rounded-full text-sm">
             {product.type}
           </span>
         </div>
-        <h3 className="text-lg font-semibold mb-2">{product.name}</h3>
-        <p className="text-gray-600 dark:text-gray-300 mb-2 line-clamp-2">{product.description}</p>
+        <p className="text-gray-400 text-lg mb-4">{product.description}</p>
         <div className="flex justify-between items-center">
-          <span className="text-xl font-bold">${product.price}</span>
-          <span className="text-sm text-gray-500 dark:text-gray-400">
-            Stock: {product.quantity}
-          </span>
+          <span className="text-3xl font-bold text-white">${product.price}</span>
+          <span className="text-gray-400">Stock: {product.quantity}</span>
         </div>
       </div>
     </div>

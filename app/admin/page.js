@@ -1,9 +1,10 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 
 export default function Admin() {
   const [formData, setFormData] = useState({
+    id: '',
     name: '',
     type: 'Electronics',
     price: '',
@@ -14,6 +15,19 @@ export default function Admin() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: '', content: '' });
   const [previewMode, setPreviewMode] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+
+  useEffect(() => {
+    // Check if there's a product to edit in localStorage
+    const editProduct = localStorage.getItem('editProduct');
+    if (editProduct) {
+      const product = JSON.parse(editProduct);
+      setFormData(product);
+      setIsEditMode(true);
+      // Clear localStorage after loading
+      localStorage.removeItem('editProduct');
+    }
+  }, []);
 
   const validateForm = () => {
     if (!formData.name.trim()) return 'Product name is required';
@@ -34,16 +48,34 @@ export default function Admin() {
     }
 
     setIsSubmitting(true);
-    setMessage({ type: 'info', content: 'Adding product...' });
+    setMessage({ type: 'info', content: isEditMode ? 'Updating product...' : 'Adding product...' });
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log('Form submitted:', formData);
-      setMessage({ type: 'success', content: 'Product added successfully!' });
-      handleClear();
+      const endpoint = isEditMode ? `/api/products/${formData.id}` : '/api/products';
+      const method = isEditMode ? 'PUT' : 'POST';
+      
+      const response = await fetch(endpoint, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) throw new Error('Failed to save product');
+
+      setMessage({ 
+        type: 'success', 
+        content: isEditMode ? 'Product updated successfully!' : 'Product added successfully!' 
+      });
+      
+      if (!isEditMode) handleClear();
+      
     } catch (error) {
-      setMessage({ type: 'error', content: 'Failed to add product. Please try again.' });
+      setMessage({ 
+        type: 'error', 
+        content: isEditMode ? 'Failed to update product. Please try again.' : 'Failed to add product. Please try again.' 
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -60,6 +92,7 @@ export default function Admin() {
 
   const handleClear = () => {
     setFormData({
+      id: '',
       name: '',
       type: 'Electronics',
       price: '',
@@ -69,12 +102,15 @@ export default function Admin() {
     });
     setMessage({ type: '', content: '' });
     setPreviewMode(false);
+    setIsEditMode(false);
   };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
       <div className="container mx-auto px-4 max-w-4xl">
-        <h1 className="text-3xl font-bold mb-8 text-center text-gray-900 dark:text-white">Admin Dashboard</h1>
+        <h1 className="text-3xl font-bold mb-8 text-center text-gray-900 dark:text-white">
+          {isEditMode ? 'Edit Product' : 'Add New Product'}
+        </h1>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 space-y-6">
@@ -178,7 +214,7 @@ export default function Admin() {
                   isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
               >
-                {isSubmitting ? 'Adding Product...' : 'Add Product'}
+                {isSubmitting ? (isEditMode ? 'Updating...' : 'Adding...') : (isEditMode ? 'Update Product' : 'Add Product')}
               </button>
               <button
                 type="button"
