@@ -1,17 +1,38 @@
 
 
 'use client';
-import { useState } from 'react';
-import { sampleProducts } from './data/sampleProducts';
+import { useState, useEffect } from 'react';
+import { database } from '@/config/firebase';
+import { ref, get } from 'firebase/database';
 
 export default function Home() {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     search: '',
     type: 'All Categories',
     maxPrice: 1000
   });
 
-  const filteredProducts = sampleProducts.filter(product => {
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        const productsRef = ref(database, 'public/products');
+        const snapshot = await get(productsRef);
+        if (snapshot.exists()) {
+          setProducts(snapshot.val());
+        }
+      } catch (error) {
+        console.error('Error loading products:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProducts();
+  }, []);
+
+  const filteredProducts = products.filter(product => {
     return (
       product.name.toLowerCase().includes(filters.search.toLowerCase()) &&
       (filters.type === 'All Categories' || product.type === filters.type) &&
@@ -19,7 +40,15 @@ export default function Home() {
     );
   });
 
-  const categories = ['All Categories', ...new Set(sampleProducts.map(p => p.type))];
+  const categories = ['All Categories', ...new Set(products.map(p => p.type))];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl text-gray-600">Loading products...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
