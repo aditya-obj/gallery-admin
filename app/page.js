@@ -20,10 +20,18 @@ export default function Home() {
         const productsRef = ref(database, 'public/products');
         const snapshot = await get(productsRef);
         if (snapshot.exists()) {
-          setProducts(snapshot.val());
+          // Convert Firebase object to array with IDs
+          const productsData = Object.entries(snapshot.val()).map(([id, data]) => ({
+            id,
+            ...data
+          }));
+          setProducts(productsData);
+        } else {
+          setProducts([]);
         }
       } catch (error) {
         console.error('Error loading products:', error);
+        setProducts([]);
       } finally {
         setLoading(false);
       }
@@ -40,6 +48,7 @@ export default function Home() {
     );
   });
 
+  // Make sure each category has a unique key
   const categories = ['All Categories', ...new Set(products.map(p => p.type))];
 
   if (loading) {
@@ -71,13 +80,13 @@ export default function Home() {
               onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}
               className="p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
             >
-              {categories.map(category => (
-                <option key={category} value={category}>{category}</option>
+              {categories.map((category, index) => (
+                <option key={`category-${index}-${category}`} value={category}>{category}</option>
               ))}
             </select>
             
             <div className="flex-1 space-y-2">
-              <label className="text-sm text-gray-600 dark:text-gray-400">Max Price: ${filters.maxPrice}</label>
+              <label className="text-sm text-gray-600 dark:text-gray-400">Max Price: ₹{filters.maxPrice}</label>
               <input
                 type="range"
                 min="0"
@@ -93,7 +102,7 @@ export default function Home() {
         {/* Products Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredProducts.map(product => (
-            <div key={product.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
+            <div key={`product-${product.id}`} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
               <div className="aspect-w-16 aspect-h-9">
                 <img src={product.image} alt={product.name} className="w-full h-48 object-cover" />
               </div>
@@ -106,7 +115,7 @@ export default function Home() {
                 </div>
                 <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">{product.description}</p>
                 <div className="flex justify-between items-center">
-                  <span className="text-2xl font-bold text-gray-900 dark:text-white">${product.price}</span>
+                  <span className="text-2xl font-bold text-gray-900 dark:text-white">₹{product.price}</span>
                   <span className="text-sm text-gray-600 dark:text-gray-400">Stock: {product.quantity}</span>
                 </div>
               </div>

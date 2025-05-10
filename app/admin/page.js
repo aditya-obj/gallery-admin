@@ -1,240 +1,191 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { database } from '@/config/firebase';
+import { ref, get, set, remove } from 'firebase/database';
+import { sampleProducts } from '@/app/data/sampleProducts';
 
 export default function Admin() {
-  const [formData, setFormData] = useState({
-    id: '',
-    name: '',
-    type: 'Electronics',
-    price: '',
-    quantity: '',
-    description: '',
-    image: ''
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [message, setMessage] = useState({ type: '', content: '' });
-  const [isEditMode, setIsEditMode] = useState(false);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const router = useRouter();
 
   useEffect(() => {
-    // Check if there's a product to edit in localStorage
-    const editProduct = localStorage.getItem('editProduct');
-    if (editProduct) {
-      const product = JSON.parse(editProduct);
-      setFormData(product);
-      setIsEditMode(true);
-      // Clear localStorage after loading
-      localStorage.removeItem('editProduct');
-    }
+    const loadProducts = async () => {
+      try {
+        console.log("Fetching products from Firebase...");
+        const productsRef = ref(database, 'public/products');
+        const snapshot = await get(productsRef);
+        
+        if (snapshot.exists()) {
+          console.log("Products found:", snapshot.val());
+          const productsData = Object.entries(snapshot.val()).map(([id, data]) => ({
+            id,
+            ...data
+          }));
+          setProducts(productsData);
+        } else {
+          console.log("No products found in database");
+          setError("No products found. Add your first product!");
+        }
+      } catch (error) {
+        console.error('Error loading products:', error);
+        setError(`Failed to load products: ${error.message}`);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProducts();
   }, []);
 
-  const validateForm = () => {
-    if (!formData.name.trim()) return 'Product name is required';
-    if (!formData.price || formData.price <= 0) return 'Valid price is required';
-    if (!formData.quantity || formData.quantity <= 0) return 'Valid quantity is required';
-    if (!formData.description.trim()) return 'Description is required';
-    if (!formData.image.trim()) return 'Image URL is required';
-    return null;
+  const handleAddNewProduct = () => {
+    router.push('/admin/add-product');
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const error = validateForm();
-    
-    if (error) {
-      setMessage({ type: 'error', content: error });
-      return;
+  const handleEdit = (product) => {
+    localStorage.setItem('editProduct', JSON.stringify(product));
+    router.push('/admin/add-product');
+  };
+
+  const handleDelete = async (productId) => {
+    if (window.confirm('Are you sure you want to delete this product?')) {
+      try {
+        // Delete directly from Firebase
+        const productRef = ref(database, `public/products/${productId}`);
+        await remove(productRef);
+        
+        // Remove product from state to update UI immediately
+        setProducts(products.filter(p => p.id !== productId));
+        alert('Product deleted successfully');
+      } catch (error) {
+        console.error('Error deleting product:', error);
+        alert('Failed to delete product. Please try again.');
+      }
     }
+  };
 
-    setIsSubmitting(true);
-    setMessage({ type: 'info', content: isEditMode ? 'Updating product...' : 'Adding product...' });
-
+  // Add sample products for testing
+  const addSampleProducts = async () => {
     try {
-      const endpoint = isEditMode ? `/api/products/${formData.id}` : '/api/products';
-      const method = isEditMode ? 'PUT' : 'POST';
+      for (const product of sampleProducts) {
+        const productRef = ref(database, `public/products/${product.id}`);
+        await set(productRef, {
+          name: product.name,
+          type: product.type,
+          price: product.price,
+          quantity: product.quantity,
+          description: product.description,
+          image: product.image
+        });
+      }
       
-      const response = await fetch(endpoint, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) throw new Error('Failed to save product');
-
-      setMessage({ 
-        type: 'success', 
-        content: isEditMode ? 'Product updated successfully!' : 'Product added successfully!' 
-      });
-      
-      if (!isEditMode) handleClear();
-      
+      alert('Sample products added successfully!');
+      window.location.reload();
     } catch (error) {
-      setMessage({ 
-        type: 'error', 
-        content: isEditMode ? 'Failed to update product. Please try again.' : 'Failed to add product. Please try again.' 
-      });
-    } finally {
-      setIsSubmitting(false);
+      console.error('Error adding sample products:', error);
+      alert('Failed to add sample products.');
     }
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    setMessage({ type: '', content: '' });
-  };
-
-  const handleClear = () => {
-    setFormData({
-      id: '',
-      name: '',
-      type: 'Electronics',
-      price: '',
-      quantity: '',
-      description: '',
-      image: ''
-    });
-    setMessage({ type: '', content: '' });
-    setIsEditMode(false);
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="text-xl text-blue-400">Loading products...</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
-      <div className="container mx-auto px-4 max-w-4xl">
-        <h1 className="text-3xl font-bold mb-8 text-center text-gray-900 dark:text-white">
-          {isEditMode ? 'Edit Product' : 'Add New Product'}
-        </h1>
+    <div className="min-h-screen bg-gray-900 py-8">
+      <div className="container mx-auto px-4">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
+          <button
+            onClick={handleAddNewProduct}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+          >
+            Add New Product
+          </button>
+        </div>
         
-        <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 space-y-6">
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Product ID</label>
-              <input
-                type="text"
-                name="id"
-                value={formData.id}
-                onChange={handleChange}
-                className="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                placeholder="Leave empty for auto-generated ID"
-                disabled={isEditMode} // Disable editing ID if in edit mode
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Product Name</label>
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                className="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type</label>
-              <select
-                name="type"
-                value={formData.type}
-                onChange={handleChange}
-                className="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+        {error && (
+          <div className="bg-gray-800 rounded-xl p-6 mb-8">
+            <p className="text-yellow-400 mb-4">{error}</p>
+            <div className="flex gap-4">
+              <button
+                onClick={handleAddNewProduct}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
               >
-                <option value="Electronics">Electronics</option>
-                <option value="Clothing">Clothing</option>
-                <option value="Books">Books</option>
-                <option value="Food">Food</option>
-              </select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Price ($)</label>
-                <input
-                  type="number"
-                  name="price"
-                  value={formData.price}
-                  onChange={handleChange}
-                  min="0"
-                  step="0.01"
-                  className="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Stock</label>
-                <input
-                  type="number"
-                  name="quantity"
-                  value={formData.quantity}
-                  onChange={handleChange}
-                  min="0"
-                  className="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                rows="4"
-                className="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Image URL</label>
-              <input
-                type="url"
-                name="image"
-                value={formData.image}
-                onChange={handleChange}
-                className="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                placeholder="https://example.com/image.jpg"
-                required
-              />
+                Add First Product
+              </button>
+              <button
+                onClick={addSampleProducts}
+                className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+              >
+                Add Sample Products
+              </button>
             </div>
           </div>
-
-          {message.content && (
-            <div className={`p-4 rounded-lg ${
-              message.type === 'error' ? 'bg-red-100 text-red-700' :
-              message.type === 'success' ? 'bg-green-100 text-green-700' :
-              'bg-blue-100 text-blue-700'
-            }`}>
-              {message.content}
-            </div>
-          )}
-
-          <div className="flex gap-4">
+        )}
+        
+        {products.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {products.map(product => (
+              <div key={product.id} className="bg-gray-800 rounded-xl overflow-hidden shadow-lg">
+                <div className="relative h-64 w-full">
+                  <Image
+                    src={product.image || 'https://via.placeholder.com/400x300?text=No+Image'}
+                    alt={product.name}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+                <div className="p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <h2 className="text-xl font-semibold text-white">{product.name}</h2>
+                    <span className="px-2 py-1 bg-blue-900 text-blue-200 text-sm rounded-full">
+                      {product.type}
+                    </span>
+                  </div>
+                  <p className="text-gray-400 text-sm mb-4 line-clamp-2">{product.description}</p>
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-2xl font-bold text-white">₹{product.price}</span>
+                    <span className="text-sm text-gray-400">Stock: {product.quantity}</span>
+                  </div>
+                  
+                  {/* Admin action buttons */}
+                  <div className="flex justify-between gap-2 mt-2">
+                    <button 
+                      onClick={() => handleEdit(product)}
+                      className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm"
+                    >
+                      Edit
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(product.id)}
+                      className="flex-1 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : !error && (
+          <div className="bg-gray-800 rounded-xl p-6 text-center">
+            <p className="text-white text-xl mb-4">No products available</p>
             <button
-              type="submit"
-              disabled={isSubmitting}
-              className={`flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors ${
-                isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
+              onClick={handleAddNewProduct}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
             >
-              {isSubmitting ? (isEditMode ? 'Updating...' : 'Adding...') : (isEditMode ? 'Update Product' : 'Add Product')}
-            </button>
-            <button
-              type="button"
-              onClick={handleClear}
-              className="px-6 py-3 rounded-lg font-medium border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            >
-              Clear Form
+              Add Your First Product
             </button>
           </div>
-        </form>
+        )}
       </div>
     </div>
   );
