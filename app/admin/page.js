@@ -49,8 +49,14 @@ export default function Admin() {
   };
 
   const handleEdit = (product) => {
-    // store the full product (with its real key) in localStorage
-    localStorage.setItem('editProduct', JSON.stringify(product));
+    // Make sure we're passing the key as the id for Firebase
+    const productToEdit = {
+      ...product,
+      id: product.key // Ensure the Firebase key is used as the id
+    };
+    
+    console.log('Editing product:', productToEdit);
+    localStorage.setItem('editProduct', JSON.stringify(productToEdit));
     router.push('/admin/add-product');
   };
 

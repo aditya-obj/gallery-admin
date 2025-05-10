@@ -106,15 +106,7 @@ export default function Login() {
             </div>
           </div>
           
-          {/* New User Call-to-Action */}
-          <div>
-            <p className="text-blue-100/80">
-              Don't have an account?{' '}
-              <a href="/signup" className="text-blue-300 hover:text-blue-200 font-semibold transition-colors cursor-pointer">
-                Create Account
-              </a>
-            </p>
-          </div>
+          
         </div>
       </div>
 

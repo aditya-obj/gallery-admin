@@ -1,8 +1,8 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { database } from '@/config/firebase';
-import { ref, push, set } from 'firebase/database';
+import { ref, push, set, get } from 'firebase/database';
 
 export default function AddProduct() {
   const [formData, setFormData] = useState({
@@ -16,7 +16,41 @@ export default function AddProduct() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: '', content: '' });
+  const [isEditMode, setIsEditMode] = useState(false);
   const router = useRouter();
+
+  // Check if we're in edit mode and load product data
+  useEffect(() => {
+    const loadEditProduct = () => {
+      try {
+        const editProductData = localStorage.getItem('editProduct');
+        if (editProductData) {
+          const product = JSON.parse(editProductData);
+          console.log('Loading product for edit:', product);
+          
+          // Set form data with the product values
+          setFormData({
+            id: product.id || product.key || '', // Use id or key, whichever is available
+            name: product.name || '',
+            type: product.type || 'Electronics',
+            price: product.price ? product.price.toString() : '',
+            quantity: product.quantity ? product.quantity.toString() : '',
+            description: product.description || '',
+            image: product.image || ''
+          });
+          
+          setIsEditMode(true);
+          
+          // Clear localStorage after loading
+          localStorage.removeItem('editProduct');
+        }
+      } catch (error) {
+        console.error('Error loading product for edit:', error);
+      }
+    };
+
+    loadEditProduct();
+  }, []);
 
   const validateForm = () => {
     if (!formData.name.trim()) return 'Product name is required';
@@ -37,41 +71,53 @@ export default function AddProduct() {
     }
 
     setIsSubmitting(true);
-    setMessage({ type: 'info', content: 'Adding product...' });
+    setMessage({ type: 'info', content: isEditMode ? 'Updating product...' : 'Adding product...' });
 
     try {
-      // If ID is provided, use it, otherwise generate one
-      const productId = formData.id.trim() || null;
+      // Prepare product data
       const productData = {
-        ...formData,
+        name: formData.name,
+        type: formData.type,
         price: parseFloat(formData.price),
-        quantity: parseInt(formData.quantity)
+        quantity: parseInt(formData.quantity),
+        description: formData.description,
+        image: formData.image
       };
       
-      let newProductRef;
+      // If ID is provided, use it, otherwise generate one
+      let productId = formData.id.trim();
+      
       if (productId) {
-        // Use provided ID
-        newProductRef = ref(database, `public/products/${productId}`);
-        await set(newProductRef, productData);
+        // Use provided ID - update existing product
+        const productRef = ref(database, `public/products/${productId}`);
+        
+        // Add the ID to the product data
+        productData.id = productId;
+        
+        // Update the product
+        await set(productRef, productData);
+        setMessage({ type: 'success', content: 'Product updated successfully!' });
       } else {
         // Generate ID
-        const productsRef = ref(database, 'public/products');
         const newKey = Date.now().toString(); // Generate a timestamp-based key
-        newProductRef = ref(database, `public/products/${newKey}`);
-        await set(newProductRef, {
-          ...productData,
-          id: newKey
-        });
+        const newProductRef = ref(database, `public/products/${newKey}`);
+        
+        // Add the ID to the product data
+        productData.id = newKey;
+        
+        // Create new product
+        await set(newProductRef, productData);
+        setMessage({ type: 'success', content: 'Product added successfully!' });
       }
 
-      setMessage({ type: 'success', content: 'Product added successfully!' });
+      // Redirect after a short delay
       setTimeout(() => {
         router.push('/admin');
       }, 1500);
       
     } catch (error) {
-      console.error('Error adding product:', error);
-      setMessage({ type: 'error', content: 'Failed to add product. Please try again.' });
+      console.error('Error saving product:', error);
+      setMessage({ type: 'error', content: `Failed to ${isEditMode ? 'update' : 'add'} product. Please try again.` });
     } finally {
       setIsSubmitting(false);
     }
@@ -94,7 +140,7 @@ export default function AddProduct() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
       <div className="container mx-auto px-4 max-w-4xl">
         <h1 className="text-3xl font-bold mb-8 text-center text-gray-900 dark:text-white">
-          Add New Product
+          {isEditMode ? 'Edit Product' : 'Add New Product'}
         </h1>
         
         <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 space-y-6">
@@ -210,7 +256,7 @@ export default function AddProduct() {
                 isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
               }`}
             >
-              {isSubmitting ? 'Adding...' : 'Add Product'}
+              {isSubmitting ? (isEditMode ? 'Updating...' : 'Adding...') : (isEditMode ? 'Update Product' : 'Add Product')}
             </button>
             <button
               type="button"
