@@ -30,7 +30,7 @@ export default function NavBar() {
               </a>
               <button
                 onClick={handleLogoutClick}
-                className="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
+                className="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 cursor-pointer"
               >
                 Logout
               </button>
@@ -38,7 +38,7 @@ export default function NavBar() {
           ) : (
             <button
               onClick={handleLoginClick}
-              className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
+              className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer"
             >
               Login
             </button>

@@ -1,6 +1,6 @@
-import './globals.css'
+import NavBarWrapper from '@/components/NavBarWrapper'
 import { AuthProvider } from '@/context/AuthContext'
-import NavBar from '@/components/NavBar'
+import './globals.css'
 
 export const metadata = {
   title: 'E-commerce App',
@@ -12,8 +12,9 @@ export default function RootLayout({ children }) {
     <html lang="en" suppressHydrationWarning>
       <body className="bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-colors">
         <AuthProvider>
-          <NavBar />
-          {children}
+          <NavBarWrapper>
+            {children}
+          </NavBarWrapper>
         </AuthProvider>
       </body>
     </html>
