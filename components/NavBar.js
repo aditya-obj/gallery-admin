@@ -1,6 +1,5 @@
 'use client';
 import { useAuth } from '@/context/AuthContext';
-import ThemeToggle from './ThemeToggle';
 import { useRouter } from 'next/navigation';
 
 export default function NavBar() {
@@ -17,11 +16,10 @@ export default function NavBar() {
   };
 
   return (
-    <nav className="bg-white dark:bg-gray-800 shadow-md transition-colors">
+    <nav className="bg-white dark:bg-gray-800 shadow-md transition-colors sticky top-0 z-50">
       <div className="container mx-auto px-4 py-4 flex justify-between items-center">
         <a href="/" className="text-xl font-bold">E-commerce</a>
         <div className="flex items-center gap-4">
-          <ThemeToggle />
           {user ? (
             <>
               <a 

@@ -1,5 +1,4 @@
 import './globals.css'
-import ThemeToggle from '@/components/ThemeToggle'
 import { AuthProvider } from '@/context/AuthContext'
 import NavBar from '@/components/NavBar'
 

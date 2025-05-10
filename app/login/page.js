@@ -1,8 +1,10 @@
 'use client';
-import { useAuth } from '@/context/AuthContext';
-import Image from 'next/image';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import Image from 'next/image';
+import { useAuth } from '@/context/AuthContext';
+import { database } from '@/config/firebase';
+import { ref, get } from 'firebase/database';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -11,6 +13,20 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { login } = useAuth();
+
+  useEffect(() => {
+    const fetchLogo = async () => {
+      try {
+        const logoRef = ref(database, 'settings/logo');
+        const snapshot = await get(logoRef);
+        
+      } catch (error) {
+        console.error('Error fetching logo:', error);
+      }
+    };
+
+    fetchLogo();
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -37,29 +53,15 @@ export default function Login() {
   };
 
   return (
-    <main className="fixed inset-0 h-screen w-screen flex overflow-hidden">
-      {/* Left Section - Sign In Focus */}
-      <div className="hidden lg:block lg:w-1/2 relative overflow-hidden">
-        {/* Background Image */}
-        <Image
-          src="https://images.unsplash.com/photo-1554774853-aae0a22c8aa4?ixlib=rb-4.0.3"
-          alt="Login Background"
-          fill
-          priority
-          className="object-cover"
-        />
-        
-        {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800" />
-        
-        {/* Decorative Elements */}
-        <div className="absolute inset-0">
-          <div className="absolute inset-0 backdrop-blur-[1px]">
-            <div className="absolute w-full h-full">
-              <div className="absolute top-[20%] left-[10%] w-64 h-64 bg-white/10 rounded-full blur-3xl" />
-              <div className="absolute bottom-[30%] right-[15%] w-72 h-72 bg-blue-400/10 rounded-full blur-3xl" />
-            </div>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-100 to-indigo-200 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
+      <div className="max-w-md w-full space-y-8 bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl">
+        <div className="text-center">
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-900 dark:text-white">
+            Welcome back
+          </h2>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            Sign in to your account
+          </p>
         </div>
 
         {/* Content Container */}
@@ -232,6 +234,6 @@ export default function Login() {
           </form>
         </div>
       </div>
-    </main>
+    </div>
   );
 }
