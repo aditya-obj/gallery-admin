@@ -56,6 +56,41 @@ body {
   }
 }
 
-.group:hover .group-hover\:animate-slideshow {
+.group:hover .group-hover\:animate-slideshow:not(.paused) {
   animation: slideshow 6s infinite;
+}
+
+/* Navigation dots styling */
+.nav-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  position: absolute;
+  bottom: 0.5rem;
+  left: 0;
+  right: 0;
+  z-index: 20;
+}
+
+.nav-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.nav-dot.active {
+  background-color: black;
+  transform: scale(1.5);
+}
+
+.dark .nav-dot {
+  background-color: rgba(75, 85, 99, 0.5);
+}
+
+.dark .nav-dot.active {
+  background-color: rgb(75, 85, 99);
+  transform: scale(1.5);
 }

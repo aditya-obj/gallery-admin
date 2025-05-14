@@ -5,6 +5,7 @@ import { get, push, ref, remove, set } from 'firebase/database';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { isVideoUrl, isYoutubeUrl, getYoutubeEmbedUrl } from '@/app/utils/mediaHelpers';
 
 export default function Admin() {
   const [products, setProducts] = useState([]);
@@ -173,38 +174,88 @@ export default function Admin() {
                 key={product.key} 
                 className="bg-gray-800 rounded-xl overflow-hidden shadow-lg border border-gray-700 flex flex-col h-full transition-shadow hover:shadow-xl"
               >
-                <div className="relative h-64 w-full group">
-                  {/* Image Slider */}
+                <div className="relative h-64 w-full group bg-white dark:bg-gray-700">
+                  {/* Media Slider (Images and Videos) */}
                   {(product.images && product.images.length > 0) ? (
                     <>
-                      {product.images.map((imgSrc, index) => (
+                      {product.images.map((mediaUrl, index) => (
                         <div 
-                          key={`img-${index}`}
+                          key={`media-${index}`}
                           className={`absolute inset-0 transition-opacity duration-1000 ease-in-out 
-                                    group-hover:animate-slideshow
+                                    group-hover:animate-slideshow bg-white dark:bg-gray-700
                                     ${index === 0 ? 'opacity-100' : 'opacity-0'}`}
                           style={{animationDelay: `${index * 2}s`}}
                         >
-                          <Image
-                            src={imgSrc || 'https://via.placeholder.com/400x300?text=No+Image'}
-                            alt={`${product.name} - image ${index + 1}`}
-                            fill
-                            sizes="(max-width: 768px) 100vw, 33vw"
-                            className="object-contain object-center"
-                            priority={index === 0}
-                          />
+                          {isVideoUrl(mediaUrl) ? (
+                            <div className="w-full h-full flex items-center justify-center">
+                              {isYoutubeUrl(mediaUrl) ? (
+                                <iframe 
+                                  src={getYoutubeEmbedUrl(mediaUrl)}
+                                  title={`${product.name} - video ${index + 1}`}
+                                  className="w-full h-full"
+                                  frameBorder="0"
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                  allowFullScreen
+                                ></iframe>
+                              ) : (
+                                <video 
+                                  src={mediaUrl}
+                                  className="w-full h-full object-contain"
+                                  controls
+                                  muted
+                                  playsInline
+                                  onMouseOver={(e) => e.target.play()}
+                                  onMouseOut={(e) => e.target.pause()}
+                                ></video>
+                              )}
+                            </div>
+                          ) : (
+                            <Image
+                              src={mediaUrl || 'https://via.placeholder.com/400x300?text=No+Image'}
+                              alt={`${product.name} - image ${index + 1}`}
+                              fill
+                              sizes="(max-width: 768px) 100vw, 33vw"
+                              className="object-contain object-center"
+                              priority={index === 0}
+                            />
+                          )}
                         </div>
                       ))}
                     </>
                   ) : (
-                    <Image
-                      src={product.image || 'https://via.placeholder.com/400x300?text=No+Image'}
-                      alt={product.name}
-                      fill
-                      sizes="(max-width: 768px) 100vw, 33vw"
-                      className="object-contain object-center"
-                      priority
-                    />
+                    isVideoUrl(product.image) ? (
+                      <div className="w-full h-full flex items-center justify-center">
+                        {isYoutubeUrl(product.image) ? (
+                          <iframe 
+                            src={getYoutubeEmbedUrl(product.image)}
+                            title={product.name}
+                            className="w-full h-full"
+                            frameBorder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          ></iframe>
+                        ) : (
+                          <video 
+                            src={product.image}
+                            className="w-full h-full object-contain"
+                            controls
+                            muted
+                            playsInline
+                            onMouseOver={(e) => e.target.play()}
+                            onMouseOut={(e) => e.target.pause()}
+                          ></video>
+                        )}
+                      </div>
+                    ) : (
+                      <Image
+                        src={product.image || 'https://via.placeholder.com/400x300?text=No+Image'}
+                        alt={product.name}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                        className="object-contain object-center"
+                        priority
+                      />
+                    )
                   )}
                   <div className="absolute top-2 right-2">
                     <span className="px-2 py-1 bg-blue-900 text-blue-200 text-sm rounded-full shadow-md">

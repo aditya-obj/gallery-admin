@@ -4,6 +4,7 @@
 import { database } from '@/config/firebase';
 import { get, ref } from 'firebase/database';
 import { useEffect, useState } from 'react';
+import { isVideoUrl, isYoutubeUrl, getYoutubeEmbedUrl } from '@/app/utils/mediaHelpers';
 
 export default function Home() {
   const [products, setProducts] = useState([]);
@@ -13,6 +14,40 @@ export default function Home() {
     type: 'All Categories',
     maxPrice: 1000
   });
+  // Add state to track active slides and hover status
+  const [activeSlides, setActiveSlides] = useState({});
+  const [pausedSlides, setPausedSlides] = useState({});
+  const [hoveredCards, setHoveredCards] = useState({});
+
+  // Add effect to handle automatic slideshow for dots
+  useEffect(() => {
+    // Create timers for each product with multiple images
+    const timers = {};
+    
+    products.forEach(product => {
+      if (product.images && product.images.length > 1 && hoveredCards[product.id]) {
+        // Set up a timer for this product's slideshow only if card is hovered
+        timers[product.id] = setInterval(() => {
+          // Only advance the slide if not paused
+          if (!pausedSlides[product.id]) {
+            setActiveSlides(prev => {
+              const currentIndex = prev[product.id] !== undefined ? prev[product.id] : 0;
+              const nextIndex = (currentIndex + 1) % product.images.length;
+              return {
+                ...prev,
+                [product.id]: nextIndex
+              };
+            });
+          }
+        }, 2000); // Change slide every 2 seconds
+      }
+    });
+    
+    // Clean up timers on unmount
+    return () => {
+      Object.values(timers).forEach(timer => clearInterval(timer));
+    };
+  }, [products, pausedSlides, hoveredCards]);
 
   useEffect(() => {
     const loadProducts = async () => {
@@ -74,6 +109,43 @@ export default function Home() {
       </div>
     );
   }
+
+  // Function to handle dot navigation
+  const handleDotClick = (productId, slideIndex) => {
+    setActiveSlides(prev => ({
+      ...prev,
+      [productId]: slideIndex
+    }));
+  };
+
+  // Function to handle pause/resume of slideshow
+  const handleSlideshowPause = (productId, isPaused) => {
+    setPausedSlides(prev => ({
+      ...prev,
+      [productId]: isPaused
+    }));
+  };
+
+  // Function to handle card hover
+  const handleCardHover = (productId, isHovered) => {
+    setHoveredCards(prev => ({
+      ...prev,
+      [productId]: isHovered
+    }));
+    
+    // Reset to first image when leaving the card
+    if (!isHovered) {
+      setActiveSlides(prev => ({
+        ...prev,
+        [productId]: 0
+      }));
+      // Also reset the paused state when leaving the card
+      setPausedSlides(prev => ({
+        ...prev,
+        [productId]: false
+      }));
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
@@ -188,33 +260,108 @@ export default function Home() {
                   <div 
                     key={`product-${product.id}`} 
                     className="group bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-lg transition-all duration-300 flex flex-col h-full"
+                    onMouseEnter={() => handleCardHover(product.id, true)}
+                    onMouseLeave={() => handleCardHover(product.id, false)}
                   >
-                    <div className="relative h-48 sm:h-56 overflow-hidden group">
-                      {/* Image Slider */}
+                    <div 
+                      className="relative h-48 sm:h-56 overflow-hidden group bg-white dark:bg-gray-700"
+                      onMouseEnter={() => handleSlideshowPause(product.id, true)}
+                      onMouseLeave={() => handleSlideshowPause(product.id, false)}
+                    >
+                      {/* Media Slider (Images and Videos) */}
                       {(product.images && product.images.length > 0) ? (
                         <>
-                          {product.images.map((imgSrc, index) => (
+                          {product.images.map((mediaUrl, index) => (
                             <div 
-                              key={`img-${index}`}
-                              className={`absolute inset-0 transition-opacity duration-1000 ease-in-out 
-                                        group-hover:animate-slideshow
-                                        ${index === 0 ? 'opacity-100' : 'opacity-0'}`}
-                              style={{animationDelay: `${index * 2}s`}}
+                              key={`media-${index}`}
+                              className={`absolute inset-0 transition-opacity duration-500 ease-in-out 
+                                        bg-white dark:bg-gray-700
+                                        ${(activeSlides[product.id] === index || (!activeSlides[product.id] && index === 0)) 
+                                          ? 'opacity-100' : 'opacity-0'}`}
                             >
-                              <img 
-                                src={imgSrc} 
-                                alt={`${product.name} - image ${index + 1}`}
-                                className="w-full h-full object-contain object-center transition-transform duration-500 group-hover:scale-105"
-                              />
+                              {isVideoUrl(mediaUrl) ? (
+                                <div 
+                                  className="w-full h-full flex items-center justify-center"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {isYoutubeUrl(mediaUrl) ? (
+                                    <iframe 
+                                      src={getYoutubeEmbedUrl(mediaUrl)}
+                                      title={`${product.name} - video ${index + 1}`}
+                                      className="w-full h-full"
+                                      frameBorder="0"
+                                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                      allowFullScreen
+                                    ></iframe>
+                                  ) : (
+                                    <video 
+                                      src={mediaUrl}
+                                      className="w-full h-full object-contain"
+                                      controls
+                                      muted
+                                      playsInline
+                                      onMouseOver={(e) => e.target.play()}
+                                      onMouseOut={(e) => e.target.pause()}
+                                    ></video>
+                                  )}
+                                </div>
+                              ) : (
+                                <img 
+                                  src={mediaUrl} 
+                                  alt={`${product.name} - image ${index + 1}`}
+                                  className="w-full h-full object-contain object-center transition-transform duration-500 group-hover:scale-105"
+                                />
+                              )}
                             </div>
                           ))}
+                          
+                          {/* Navigation Dots */}
+                          {product.images.length > 1 && (
+                            <div className="nav-dots">
+                              {product.images.map((_, index) => (
+                                <div 
+                                  key={`dot-${index}`}
+                                  className={`nav-dot ${(activeSlides[product.id] === index || (!activeSlides[product.id] && index === 0)) ? 'active' : ''}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDotClick(product.id, index);
+                                  }}
+                                ></div>
+                              ))}
+                            </div>
+                          )}
                         </>
                       ) : (
-                        <img 
-                          src={product.image} 
-                          alt={product.name} 
-                          className="w-full h-full object-contain object-center transition-transform duration-500 group-hover:scale-105"
-                        />
+                        isVideoUrl(product.image) ? (
+                          <div className="w-full h-full flex items-center justify-center">
+                            {isYoutubeUrl(product.image) ? (
+                              <iframe 
+                                src={getYoutubeEmbedUrl(product.image)}
+                                title={product.name}
+                                className="w-full h-full"
+                                frameBorder="0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                              ></iframe>
+                            ) : (
+                              <video 
+                                src={product.image}
+                                className="w-full h-full object-contain"
+                                controls
+                                muted
+                                playsInline
+                                onMouseOver={(e) => e.target.play()}
+                                onMouseOut={(e) => e.target.pause()}
+                              ></video>
+                            )}
+                          </div>
+                        ) : (
+                          <img 
+                            src={product.image} 
+                            alt={product.name} 
+                            className="w-full h-full object-contain object-center transition-transform duration-500 group-hover:scale-105 bg-white dark:bg-gray-700"
+                          />
+                        )
                       )}
                       <div className="absolute top-2 right-2">
                         <span className="px-2 sm:px-3 py-1 bg-indigo-500/90 text-white text-xs font-medium rounded-full shadow-sm">
