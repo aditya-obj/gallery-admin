@@ -1,26 +1,25 @@
 import { NextResponse } from 'next/server';
-import { database } from '@/config/firebase';
-import { ref, get } from 'firebase/database';
 
 export async function POST(request) {
   try {
     const { username, password } = await request.json();
 
-    // Get user from Firebase
-    const userRef = ref(database, `users/auth/${username}`);
-    const snapshot = await get(userRef);
+    // Get credentials from environment variables
+    const loginIds = process.env.NEXT_PUBLIC_LOGIN_ID.replace(/[\[\]]/g, '').split(',');
+    const loginPasswords = process.env.NEXT_PUBLIC_LOGIN_PASSWORD.replace(/[\[\]]/g, '').split(',');
+
+    // Find matching credentials
+    const userIndex = loginIds.findIndex(id => id.trim() === username);
     
-    if (!snapshot.exists()) {
+    if (userIndex === -1) {
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 }
       );
     }
 
-    const storedPassword = snapshot.val();
-
     // Check password
-    if (storedPassword !== password) {
+    if (loginPasswords[userIndex].trim() !== password) {
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 }
@@ -30,7 +29,8 @@ export async function POST(request) {
     return NextResponse.json({
       success: true,
       user: {
-        username
+        username,
+        role: 'admin' // You can add more user info if needed
       }
     });
 
