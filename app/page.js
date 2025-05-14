@@ -1,10 +1,11 @@
 
 
 'use client';
+import { getYoutubeEmbedUrl, isVideoUrl, isYoutubeUrl } from '@/app/utils/mediaHelpers';
 import { database } from '@/config/firebase';
 import { get, ref } from 'firebase/database';
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
-import { isVideoUrl, isYoutubeUrl, getYoutubeEmbedUrl } from '@/app/utils/mediaHelpers';
 
 export default function Home() {
   const [products, setProducts] = useState([]);
@@ -82,7 +83,7 @@ export default function Home() {
     if (maxPossiblePrice > filters.maxPrice) {
       setFilters(prev => ({ ...prev, maxPrice: maxPossiblePrice }));
     }
-  }, [maxPossiblePrice]);
+  }, [maxPossiblePrice, filters.maxPrice]);
 
   const categories = ['All Categories', ...new Set(products.map(p => p.type).filter(Boolean))];
   
@@ -356,9 +357,11 @@ export default function Home() {
                             )}
                           </div>
                         ) : (
-                          <img 
+                          <Image 
                             src={product.image} 
                             alt={product.name} 
+                            width={500} 
+                            height={300} 
                             className="w-full h-full object-contain object-center transition-transform duration-500 group-hover:scale-105 bg-white dark:bg-gray-700"
                           />
                         )

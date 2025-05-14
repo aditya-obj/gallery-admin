@@ -2,6 +2,8 @@
 import { database } from '@/config/firebase';
 import { useAuth } from '@/context/AuthContext';
 import { get, ref } from 'firebase/database';
+import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
@@ -57,10 +59,13 @@ export default function Login() {
       <div className="w-full md:w-1/2 relative flex items-center">
         {/* Background Image */}
         <div className="absolute inset-0 z-0">
-          <img 
+          <Image 
             src="https://images.unsplash.com/photo-1550745165-9bc0b252726f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80" 
             alt="Background" 
             className="w-full h-full object-cover opacity-40"
+            fill
+            priority
+            sizes="100vw"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-gray-900 to-transparent"></div>
         </div>
@@ -212,12 +217,12 @@ export default function Login() {
             </button>
 
             <div className="text-center">
-              <a 
+              <Link 
                 href="/" 
                 className="text-sm text-blue-400 hover:text-blue-300 font-medium hover:underline cursor-pointer"
               >
                 Return to homepage
-              </a>
+              </Link>
             </div>
           </form>
         </div>

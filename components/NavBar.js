@@ -1,5 +1,6 @@
 'use client';
 import { useAuth } from '@/context/AuthContext';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 export default function NavBar() {
@@ -18,16 +19,16 @@ export default function NavBar() {
   return (
     <nav className="bg-white dark:bg-gray-800 shadow-md transition-colors sticky top-0 z-50">
       <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-        <a href="/" className="text-xl font-bold">E-commerce</a>
+        <Link href="/" className="text-xl font-bold">E-commerce</Link>
         <div className="flex items-center gap-4">
           {user ? (
             <>
-              <a 
+              <Link 
                 href="/admin" 
                 className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
               >
                 Admin
-              </a>
+              </Link>
               <button
                 onClick={handleLogoutClick}
                 className="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 cursor-pointer"
