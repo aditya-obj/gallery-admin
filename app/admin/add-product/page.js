@@ -1,8 +1,8 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { database } from '@/config/firebase';
-import { ref, push, set, get } from 'firebase/database';
+import { get, ref, set } from 'firebase/database';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 export default function AddProduct() {
   const [formData, setFormData] = useState({
@@ -17,7 +17,35 @@ export default function AddProduct() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: '', content: '' });
   const [isEditMode, setIsEditMode] = useState(false);
+  const [productTypes, setProductTypes] = useState(['Electronics', 'Clothing', 'Books', 'Food']);
   const router = useRouter();
+
+  // Fetch all existing product types
+  useEffect(() => {
+    const fetchProductTypes = async () => {
+      try {
+        const productsRef = ref(database, 'public/products');
+        const snapshot = await get(productsRef);
+        
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          const types = Object.values(data)
+            .map(product => product.type)
+            .filter(Boolean);
+          
+          // Get unique types and ensure default types are included
+          const defaultTypes = ['Electronics', 'Clothing', 'Books', 'Food'];
+          const uniqueTypes = [...new Set([...types, ...defaultTypes])];
+          console.log('Fetched product types:', uniqueTypes);
+          setProductTypes(uniqueTypes);
+        }
+      } catch (error) {
+        console.error('Error fetching product types:', error);
+      }
+    };
+
+    fetchProductTypes();
+  }, []);
 
   // Check if we're in edit mode and load product data
   useEffect(() => {
@@ -171,17 +199,21 @@ export default function AddProduct() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type</label>
-              <select
+              <input
+                type="text"
                 name="type"
                 value={formData.type}
                 onChange={handleChange}
                 className="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-              >
-                <option value="Electronics">Electronics</option>
-                <option value="Clothing">Clothing</option>
-                <option value="Books">Books</option>
-                <option value="Food">Food</option>
-              </select>
+                placeholder="Enter product type"
+                list="product-types"
+                autoComplete="on"
+              />
+              <datalist id="product-types">
+                {productTypes.map((type, index) => (
+                  <option key={`type-${index}`} value={type}>{type}</option>
+                ))}
+              </datalist>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
