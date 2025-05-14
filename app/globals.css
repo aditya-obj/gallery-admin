@@ -45,3 +45,17 @@ body {
 .rotate-y-0 {
   transform: rotateY(0deg);
 }
+
+/* Add these custom styles for image slideshow animation */
+@keyframes slideshow {
+  0%, 25% {
+    opacity: 1;
+  }
+  33%, 100% {
+    opacity: 0;
+  }
+}
+
+.group:hover .group-hover\:animate-slideshow {
+  animation: slideshow 6s infinite;
+}

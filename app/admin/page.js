@@ -173,13 +173,39 @@ export default function Admin() {
                 key={product.key} 
                 className="bg-gray-800 rounded-xl overflow-hidden shadow-lg border border-gray-700 flex flex-col h-full transition-shadow hover:shadow-xl"
               >
-                <div className="relative h-64 w-full">
-                  <Image
-                    src={product.image || 'https://via.placeholder.com/400x300?text=No+Image'}
-                    alt={product.name}
-                    fill
-                    className="object-cover"
-                  />
+                <div className="relative h-64 w-full group">
+                  {/* Image Slider */}
+                  {(product.images && product.images.length > 0) ? (
+                    <>
+                      {product.images.map((imgSrc, index) => (
+                        <div 
+                          key={`img-${index}`}
+                          className={`absolute inset-0 transition-opacity duration-1000 ease-in-out 
+                                    group-hover:animate-slideshow
+                                    ${index === 0 ? 'opacity-100' : 'opacity-0'}`}
+                          style={{animationDelay: `${index * 2}s`}}
+                        >
+                          <Image
+                            src={imgSrc || 'https://via.placeholder.com/400x300?text=No+Image'}
+                            alt={`${product.name} - image ${index + 1}`}
+                            fill
+                            sizes="(max-width: 768px) 100vw, 33vw"
+                            className="object-contain object-center"
+                            priority={index === 0}
+                          />
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    <Image
+                      src={product.image || 'https://via.placeholder.com/400x300?text=No+Image'}
+                      alt={product.name}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 33vw"
+                      className="object-contain object-center"
+                      priority
+                    />
+                  )}
                   <div className="absolute top-2 right-2">
                     <span className="px-2 py-1 bg-blue-900 text-blue-200 text-sm rounded-full shadow-md">
                       {product.type}

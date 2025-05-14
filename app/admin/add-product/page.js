@@ -8,16 +8,18 @@ export default function AddProduct() {
   const [formData, setFormData] = useState({
     id: '',
     name: '',
-    type: 'Electronics',
+    type: '',
     price: '',
     quantity: '',
     description: '',
-    image: ''
+    images: [''] // Changed from 'image' to 'images' array
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: '', content: '' });
   const [isEditMode, setIsEditMode] = useState(false);
-  const [productTypes, setProductTypes] = useState(['Electronics', 'Clothing', 'Books', 'Food']);
+  const [productTypes, setProductTypes] = useState([]);
+  const [showNewTypeInput, setShowNewTypeInput] = useState(false);
+  const [newType, setNewType] = useState('');
   const router = useRouter();
 
   // Fetch all existing product types
@@ -31,11 +33,11 @@ export default function AddProduct() {
           const data = snapshot.val();
           const types = Object.values(data)
             .map(product => product.type)
-            .filter(Boolean);
+            .filter(Boolean); // Filter out any null or undefined values
           
-          // Get unique types and ensure default types are included
-          const defaultTypes = ['Electronics', 'Clothing', 'Books', 'Food'];
-          const uniqueTypes = [...new Set([...types, ...defaultTypes])];
+          // Get unique types
+          const uniqueTypes = [...new Set(types)].sort();
+          
           console.log('Fetched product types:', uniqueTypes);
           setProductTypes(uniqueTypes);
         }
@@ -60,11 +62,13 @@ export default function AddProduct() {
           setFormData({
             id: product.id || product.key || '', // Use id or key, whichever is available
             name: product.name || '',
-            type: product.type || 'Electronics',
+            type: product.type || '',
             price: product.price ? product.price.toString() : '',
             quantity: product.quantity ? product.quantity.toString() : '',
             description: product.description || '',
-            image: product.image || ''
+            // Handle both single image string and array of images
+            images: Array.isArray(product.images) ? product.images : 
+                   (product.image ? [product.image] : [''])
           });
           
           setIsEditMode(true);
@@ -80,12 +84,62 @@ export default function AddProduct() {
     loadEditProduct();
   }, []);
 
+  const handleTypeChange = (e) => {
+    const value = e.target.value;
+    if (value === 'new_type') {
+      setShowNewTypeInput(true);
+      setFormData(prev => ({ ...prev, type: '' }));
+    } else {
+      setShowNewTypeInput(false);
+      setFormData(prev => ({ ...prev, type: value }));
+    }
+  };
+
+  const handleNewTypeChange = (e) => {
+    const value = e.target.value;
+    setNewType(value);
+    setFormData(prev => ({ ...prev, type: value }));
+  };
+
+  // Handle image URL changes
+  const handleImageChange = (index, value) => {
+    const newImages = [...formData.images];
+    newImages[index] = value;
+    setFormData(prev => ({ ...prev, images: newImages }));
+    setMessage({ type: '', content: '' });
+  };
+
+  // Add a new image input field
+  const addImageField = () => {
+    setFormData(prev => ({
+      ...prev,
+      images: [...prev.images, '']
+    }));
+  };
+
+  // Remove an image input field
+  const removeImageField = (index) => {
+    if (formData.images.length <= 1) return; // Keep at least one image field
+    
+    const newImages = formData.images.filter((_, i) => i !== index);
+    setFormData(prev => ({
+      ...prev,
+      images: newImages
+    }));
+  };
+
   const validateForm = () => {
     if (!formData.name.trim()) return 'Product name is required';
+    if (!formData.type.trim()) return 'Product type is required';
     if (!formData.price || formData.price <= 0) return 'Valid price is required';
     if (!formData.quantity || formData.quantity <= 0) return 'Valid quantity is required';
     if (!formData.description.trim()) return 'Description is required';
-    if (!formData.image.trim()) return 'Image URL is required';
+    
+    // Check if at least one image URL is provided and valid
+    if (!formData.images.some(img => img.trim())) {
+      return 'At least one image URL is required';
+    }
+    
     return null;
   };
 
@@ -102,6 +156,9 @@ export default function AddProduct() {
     setMessage({ type: 'info', content: isEditMode ? 'Updating product...' : 'Adding product...' });
 
     try {
+      // Filter out empty image URLs
+      const filteredImages = formData.images.filter(img => img.trim());
+      
       // Prepare product data
       const productData = {
         name: formData.name,
@@ -109,7 +166,8 @@ export default function AddProduct() {
         price: parseFloat(formData.price),
         quantity: parseInt(formData.quantity),
         description: formData.description,
-        image: formData.image
+        images: filteredImages,
+        image: filteredImages[0] // Keep first image as main image for backward compatibility
       };
       
       // If ID is provided, use it, otherwise generate one
@@ -199,21 +257,32 @@ export default function AddProduct() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type</label>
-              <input
-                type="text"
+              <select
                 name="type"
-                value={formData.type}
-                onChange={handleChange}
+                value={showNewTypeInput ? 'new_type' : formData.type}
+                onChange={handleTypeChange}
                 className="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                placeholder="Enter product type"
-                list="product-types"
-                autoComplete="on"
-              />
-              <datalist id="product-types">
+                required
+              >
+                <option value="" disabled>Select a product type</option>
                 {productTypes.map((type, index) => (
                   <option key={`type-${index}`} value={type}>{type}</option>
                 ))}
-              </datalist>
+                <option value="new_type">+ Add New Type</option>
+              </select>
+              
+              {showNewTypeInput && (
+                <div className="mt-2">
+                  <input
+                    type="text"
+                    value={newType}
+                    onChange={handleNewTypeChange}
+                    className="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                    placeholder="Enter new product type"
+                    required
+                  />
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -257,16 +326,46 @@ export default function AddProduct() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Image URL</label>
-              <input
-                type="url"
-                name="image"
-                value={formData.image}
-                onChange={handleChange}
-                className="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                placeholder="https://example.com/image.jpg"
-                required
-              />
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Product Images</label>
+                <button
+                  type="button"
+                  onClick={addImageField}
+                  className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center text-sm font-medium cursor-pointer"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                  </svg>
+                  Add Image
+                </button>
+              </div>
+              
+              {formData.images.map((image, index) => (
+                <div key={`image-${index}`} className="flex items-center gap-2 mb-2">
+                  <input
+                    type="url"
+                    value={image}
+                    onChange={(e) => handleImageChange(index, e.target.value)}
+                    className="flex-1 p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                    placeholder="https://example.com/image.jpg"
+                    required={index === 0} // Only the first image is required
+                  />
+                  {formData.images.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeImageField(index)}
+                      className="p-2 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 cursor-pointer"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              ))}
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                First image will be used as the main product image
+              </p>
             </div>
           </div>
 
@@ -285,7 +384,7 @@ export default function AddProduct() {
               type="submit"
               disabled={isSubmitting}
               className={`flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors ${
-                isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+                isSubmitting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
               }`}
             >
               {isSubmitting ? (isEditMode ? 'Updating...' : 'Adding...') : (isEditMode ? 'Update Product' : 'Add Product')}
@@ -293,7 +392,7 @@ export default function AddProduct() {
             <button
               type="button"
               onClick={handleCancel}
-              className="px-6 py-3 rounded-lg font-medium border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              className="px-6 py-3 rounded-lg font-medium border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
             >
               Cancel
             </button>

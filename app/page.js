@@ -189,12 +189,33 @@ export default function Home() {
                     key={`product-${product.id}`} 
                     className="group bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-lg transition-all duration-300 flex flex-col h-full"
                   >
-                    <div className="relative h-48 sm:h-56 overflow-hidden">
-                      <img 
-                        src={product.image} 
-                        alt={product.name} 
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
+                    <div className="relative h-48 sm:h-56 overflow-hidden group">
+                      {/* Image Slider */}
+                      {(product.images && product.images.length > 0) ? (
+                        <>
+                          {product.images.map((imgSrc, index) => (
+                            <div 
+                              key={`img-${index}`}
+                              className={`absolute inset-0 transition-opacity duration-1000 ease-in-out 
+                                        group-hover:animate-slideshow
+                                        ${index === 0 ? 'opacity-100' : 'opacity-0'}`}
+                              style={{animationDelay: `${index * 2}s`}}
+                            >
+                              <img 
+                                src={imgSrc} 
+                                alt={`${product.name} - image ${index + 1}`}
+                                className="w-full h-full object-contain object-center transition-transform duration-500 group-hover:scale-105"
+                              />
+                            </div>
+                          ))}
+                        </>
+                      ) : (
+                        <img 
+                          src={product.image} 
+                          alt={product.name} 
+                          className="w-full h-full object-contain object-center transition-transform duration-500 group-hover:scale-105"
+                        />
+                      )}
                       <div className="absolute top-2 right-2">
                         <span className="px-2 sm:px-3 py-1 bg-indigo-500/90 text-white text-xs font-medium rounded-full shadow-sm">
                           {product.type}
